@@ -1,3 +1,4 @@
+// middlewares/errorHandler.js - Updated
 const { StatusCodes } = require('http-status-codes');
 
 const errorHandler = (err, req, res, next) => {
@@ -5,30 +6,43 @@ const errorHandler = (err, req, res, next) => {
 
   let statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
   let message = 'Something went wrong on the server';
+  let errors = null;
 
-  // Handle Mongoose validation errors
+  // Mongoose validation error
   if (err.name === 'ValidationError') {
     statusCode = StatusCodes.BAD_REQUEST;
-    message = Object.values(err.errors).map(val => val.message).join(', ');
+    message = 'Validation failed';
+    errors = Object.values(err.errors).map(el => ({
+      field: el.path,
+      message: el.message
+    }));
   }
 
-  // Handle Mongoose duplicate key errors
+  // JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    statusCode = StatusCodes.UNAUTHORIZED;
+    message = 'Invalid token';
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    statusCode = StatusCodes.UNAUTHORIZED;
+    message = 'Token expired';
+  }
+
+  // Mongoose duplicate key
   if (err.code === 11000) {
     statusCode = StatusCodes.CONFLICT;
     message = 'Duplicate field value entered';
-  }
-
-  // Handle Mongoose CastError (invalid ObjectId)
-  if (err.name === 'CastError') {
-    statusCode = StatusCodes.BAD_REQUEST;
-    message = 'Resource not found';
+    errors = [{ 
+      field: Object.keys(err.keyPattern)[0],
+      message: `This ${Object.keys(err.keyPattern)[0]} already exists`
+    }];
   }
 
   res.status(statusCode).json({
     success: false,
     message,
-    error: process.env.NODE_ENV === 'development' ? err : {}
+    errors,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 };
-
-module.exports = errorHandler;

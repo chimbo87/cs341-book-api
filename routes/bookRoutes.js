@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
+const { authenticate, authorize } = require('../middlewares/auth');
 const bookController = require('../controllers/books');
 
 // Validation rules
@@ -16,10 +17,16 @@ const bookValidationRules = [
 ];
 
 // Routes
+// router.get('/', bookController.getAllBooks);
+// router.get('/:id', bookController.getBook);
+// router.post('/', bookValidationRules, bookController.createBook);
+// router.put('/:id', bookValidationRules, bookController.updateBook);
+// router.delete('/:id', bookController.deleteBook);
+
 router.get('/', bookController.getAllBooks);
 router.get('/:id', bookController.getBook);
-router.post('/', bookValidationRules, bookController.createBook);
-router.put('/:id', bookValidationRules, bookController.updateBook);
-router.delete('/:id', bookController.deleteBook);
+router.post('/', authenticate, authorize(['admin']), bookValidationRules, bookController.createBook);
+router.put('/:id', authenticate, authorize(['admin']), bookValidationRules, bookController.updateBook);
+router.delete('/:id', authenticate, authorize(['admin']), bookController.deleteBook);
 
 module.exports = router;
